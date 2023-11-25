@@ -7,11 +7,12 @@ uint32_t system_clock;
 //--> Using HSE with Register config <--//
 void RCC_Config(void)
 {
-	//-> We can change a specific byte value wh '|=' (OR).
+	//-> We can change a specific byte value with '|=' (OR).
 	//-> We can write the new value over the current value with '&=' (AND).
 	//-> The '~' sign takes the reverse of the expression.
 	////////////////////////////////////////////
 	//--> Opening HSE <--//
+	/* Reset CFGR register */
 	RCC->CR &= ~(1 << 0); 				//-> HSION became 0. HSI=OFF
 	RCC->CR |= 1 << 16; 				//-> HSEON became 1. HSE=ON
 	while(!(RCC->CR & (1 << 17))); 		//-> Wait HSE active
@@ -54,13 +55,11 @@ void RCC_Config(void)
 int main(void)
 {
 	system_clock = SystemCoreClock;
-
 	//--> Using HSI <--//
-	RCC_DeInit(); //-> HSI->ON, PLL->OFF
+	//RCC_DeInit(); //-> HSI->ON, PLL->OFF (This bit cannot be cleared if the HSI is used directly or indirectly as the system clock.)
 	SystemCoreClockUpdate(); //-> Updates the system clock
 	system_clock = SystemCoreClock;
 	////////////////////
-
 	//--> Using PLL <--//
 	RCC_Config();
 	SystemCoreClockUpdate();
