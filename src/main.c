@@ -7,64 +7,51 @@ uint32_t system_clock;
 //--> Using HSE with Register config <--//
 void RCC_Config(void)
 {
-	//-> We can change a specific byte value with '|=' (OR).
-	//-> We can write the new value over the current value with '&=' (AND).
-	//-> The '~' sign takes the reverse of the expression.
-	////////////////////////////////////////////
-	//--> Opening HSE <--//
-	/* Reset CFGR register */
-	RCC->CR &= ~(1 << 0); 				//-> HSION became 0. HSI=OFF
-	RCC->CR |= 1 << 16; 				//-> HSEON became 1. HSE=ON
-	while(!(RCC->CR & (1 << 17))); 		//-> Wait HSE active
-	////////////////////////////////////////////
-	//--> PLL CONFIG <--//
-	RCC->CR |= 1<<19; 					//-> CSSON became 1.
-	RCC->PLLCFGR = 0x00000000; 			//-> PLLCFGR = 0
-	RCC->PLLCFGR |= (1 << 22); 			//-> PLLSRC = 1, PLL Source = HSE
+	/*
+	 * @brief:
+	 * We can change a specific byte value with '|=' (OR).
+	 * We can write the new value over the current value with '&=' (AND).
+	 * The '~' sign takes the reverse of the expression.
+	 *
+	 *
+	 *@clock:
+	 *(PLL_M:4, PLL_N:168, PLL_P:2)
+	 *SYSCLK = [(8Mhz/4)*168/2] = 168Mhz
+	 *-//////////////////////
+	 *SYSCLK = 168Mhz
+	 *AHB    = 168Mhz (Prescaler:1)
+	 *APB1   = 42Mhz  (Prescaler:4)
+	 *APB2   = 84Mhz  (Prescaler:2)
+	 *-///////////////////////
+	*/
 
-	//PLL_M = 4 (000100)
-	RCC->PLLCFGR &= ~(1 << 0); 			//-> PLLM0 = 0
-	RCC->PLLCFGR &= ~(1 << 1); 			//-> PLLM1 = 0
-	RCC->PLLCFGR |= (1 << 2);  			//-> PLLM2 = 1
-	RCC->PLLCFGR &= ~(1 << 3); 			//-> PLLM3 = 0
-	RCC->PLLCFGR &= ~(1 << 4); 			//-> PLLM4 = 0
-	RCC->PLLCFGR &= ~(1 << 5); 			//-> PLLM5 = 0
-	//RCC->PLLCFGR |= (4<<0); 			//-> PLL_M = 4 (We processed the value)
+	//Settings of Opening HSE
+	RCC->CR &= ~(1 << 0);               //->HSION = 0, (HSI=OFF)
+	while((RCC->CR & 0X3));				//->Wait HSI deactivate.
+	RCC->CR |= (1 << 16); 				//->HSEON = 1, (HSE=ON)
+	while(!(RCC->CR & (1 << 17))); 		//->Wait HSE active
 
-	//PLL_N = 168
-	RCC->PLLCFGR |= (168<<6); 			//-> PLL_N = 168 (We processed the value)
+	//Settings of PLL
+	RCC->CR |= (1<<19); 				//->CSSON = 1.
+	RCC->PLLCFGR |= (1 << 22); 			//->PLLSRC = 1, (PLL Source = HSE)
+	RCC->PLLCFGR |= (4<<0); 			//->PLL_M = 4
+	RCC->PLLCFGR |= (168<<6); 			//->PLL_N = 168
+	RCC->PLLCFGR |= 0x00; 				//->PLL_P = 2
 
-	//PLL_P = 2 (00)
-	RCC->PLLCFGR &= ~(1 << 16); 		//-> PLLP0 = 0
-	RCC->PLLCFGR &= ~(1 << 17); 		//-> PLLP1 = 0
+	//Settings of Prescaler
+	RCC->CFGR = 0x0;                    //->AHB  Prescaler = 1
+	RCC->CFGR |= (5 << 10);             //->APB1 Prescaler = 4
+	RCC->CFGR |= (4 << 13);             //->APB2 Prescaler = 2
 
-	//////-->> SYSCLK = [(8Mhz/4)*168/4] = 84Mhz
-
-	RCC->CR |= (1 << 24); 				//-> PLLON = 1, PLL opens
-	while(!(RCC->CR & (1 << 25))); 		//-> Wait PLL active
-
-	RCC->CFGR &= ~(1 << 0); 			//->SW0 = 0
-	RCC->CFGR |= (1 << 1);  			//->SW1 = 1
-	//-> System clock is PLL
-	while(!(RCC->CFGR & (1 << 1))); 	//-> Select system clock is pll clock
-
-
-	// 8Mhz -> 168Mhz
-	////////////////////////////////////////////
+	RCC->CR = (1<<19);                  //-> HSERDY Flag clear.
+	RCC->CR = (1<<23);                  //-> CSS Flag clear.
+	SystemCoreClockUpdate();
 }
 int main(void)
 {
 	system_clock = SystemCoreClock;
-	//--> Using HSI <--//
-	//RCC_DeInit(); //-> HSI->ON, PLL->OFF (This bit cannot be cleared if the HSI is used directly or indirectly as the system clock.)
-	SystemCoreClockUpdate(); //-> Updates the system clock
-	system_clock = SystemCoreClock;
-	////////////////////
-	//--> Using PLL <--//
 	RCC_Config();
-	SystemCoreClockUpdate();
 	system_clock = SystemCoreClock;
-	////////////////////
 	while (1)
 	{
 
